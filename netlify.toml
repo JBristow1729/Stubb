@@ -1,0 +1,28 @@
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/events/:org"
+  to = "/events-organisation-public.html?org=:org"
+  status = 200
+
+[[redirects]]
+  from = "/events/:org/:event"
+  to = "/event-page.html?slug=:event&org=:org"
+  status = 200
+
+[[redirects]]
+  from = "/tickets/:ticket_id"
+  to = "/ticket-page.html"
+  status = 200
+
+[[redirects]]
+  from = "/checkout"
+  to = "/checkout.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

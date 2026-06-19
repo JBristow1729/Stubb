@@ -1,0 +1,83 @@
+/* ==========================================================================
+   STUBB — MANAGE EVENT
+   ========================================================================== */
+
+.manage-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
+}
+@media (max-width: 760px) {
+  .manage-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+.manage-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.manage-stat__value {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+.manage-stat__value.mono { font-family: var(--font-mono); font-size: var(--text-lg); }
+.manage-stat__label {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manage-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+  flex-wrap: wrap;
+}
+
+.manage-search {
+  max-width: 320px;
+  padding: var(--sp-3) var(--sp-4);
+}
+.manage-search .hero__search-input { font-size: var(--text-sm); }
+
+@media (max-width: 760px) {
+  .manage-toolbar { flex-direction: column; align-items: stretch; }
+  .manage-search { max-width: none; }
+}
+
+/* ---- QR scan modal ---- */
+.scan-modal { max-width: 380px; text-align: center; }
+.scan-modal__viewport {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--ink-950);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scan-modal__placeholder { width: 64px; height: 64px; color: var(--ink-700); }
+.scan-modal__frame {
+  position: absolute;
+  inset: var(--sp-8);
+  border: 2px solid var(--accent);
+  border-radius: var(--r-md);
+}
+.scan-modal__frame::before, .scan-modal__frame::after {
+  content: "";
+  position: absolute;
+  width: 22px; height: 22px;
+  border-color: var(--accent);
+}
+.scan-modal h3 { font-size: var(--text-md); }
+.scan-modal p { font-size: var(--text-sm); }

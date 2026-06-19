@@ -1,0 +1,71 @@
+/* ==========================================================================
+   STUBB — AUTH
+   ========================================================================== */
+
+.auth-shell {
+  min-height: calc(100vh - var(--nav-h));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-8) var(--sp-4);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: var(--sp-10) var(--sp-8);
+}
+
+.auth-step { display: none; }
+.auth-step.is-active { display: block; }
+
+.auth-title { font-size: var(--text-2xl); margin: var(--sp-3) 0 var(--sp-2); }
+.auth-sub { color: var(--text-muted); font-size: var(--text-sm); margin-bottom: var(--sp-2); }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+  margin: var(--sp-6) 0;
+  gap: var(--sp-3);
+}
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.auth-fineprint { font-size: var(--text-xs); color: var(--text-faint); text-align: center; margin-top: var(--sp-6); }
+
+.account-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+}
+@media (max-width: 420px) { .account-type-grid { grid-template-columns: 1fr; } }
+
+.account-type-card {
+  position: relative;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: var(--sp-5);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.account-type-card input { position: absolute; opacity: 0; pointer-events: none; }
+.account-type-card:hover { border-color: var(--accent); }
+.account-type-card.is-selected { border-color: var(--accent); background: var(--accent-tint); }
+.account-type-card__icon {
+  width: 36px; height: 36px;
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+}
+.account-type-card h3 { font-size: var(--text-base); }
+.account-type-card p { font-size: var(--text-xs); color: var(--text-muted); }

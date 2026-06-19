@@ -1,0 +1,33 @@
+/* ==========================================================================
+   STUBB — PUBLIC ORGANISATION PAGE
+   ========================================================================== */
+
+.org-banner { aspect-ratio: 16/4; background: var(--surface-raised); max-height: 280px; overflow: hidden; }
+.org-banner__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.org-identity {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-5);
+  margin-top: -48px;
+  padding-bottom: var(--sp-8);
+  position: relative;
+}
+.org-identity__avatar {
+  width: 96px; height: 96px;
+  border-radius: var(--r-lg);
+  border: 4px solid var(--bg);
+  overflow: hidden;
+  background: var(--surface-raised);
+  flex-shrink: 0;
+}
+.org-identity__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.org-identity__text h1 { font-size: var(--text-xl); margin-bottom: var(--sp-2); }
+.org-identity__text p { color: var(--text-muted); font-size: var(--text-sm); max-width: 540px; }
+.org-identity__share { margin-left: auto; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .org-identity { flex-direction: column; align-items: flex-start; margin-top: -36px; }
+  .org-identity__avatar { width: 76px; height: 76px; }
+  .org-identity__share { margin-left: 0; }
+}
