@@ -1,0 +1,15 @@
+{
+  "name": "stubb",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Static-first event ticketing app with Netlify Functions and Netlify Database backing code.",
+  "scripts": {
+    "dev": "netlify dev",
+    "db:migrate": "netlify database migrations apply",
+    "db:status": "netlify database status"
+  },
+  "dependencies": {
+    "@netlify/database": "^1.0.0"
+  },
+  "devDependencies": {}
+}

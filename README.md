@@ -27,15 +27,18 @@ then create a separate user account to buy a ticket.
 
 This is a static app, so shared production state still needs real infrastructure:
 
-- Replace `localStorage` with a database and server API.
+- Replace `localStorage` with Netlify Database and server APIs.
 - Add Stubb to the central Wholegrain Studios account-link service before production launch.
-- Store Stripe secrets only in server-side environment variables.
+- Store platform secrets only in server-side environment variables.
+- Store organiser Stripe keys only through the encrypted server-side credential endpoint.
 - Create tickets only after a verified Stripe webhook.
 - Send ticket emails from a transactional email provider.
-- Replace the QR-style canvas with a standards-compliant QR encoder before relying on camera scanning.
+- Replace the QR-style canvas with the planned in-house standards-compliant QR encoder before relying on camera scanning.
 
 The Stripe function stubs follow Stripe's current security guidance: webhook verification must use
 the unmodified raw request body plus the `Stripe-Signature` header and endpoint secret.
+
+See `docs/production-roadmap.md` for the build order, schema, and external setup stop point.
 
 ## File Map
 
@@ -69,8 +72,8 @@ netlify/functions/               Stripe Checkout and webhook serverless boundari
 Set these environment variables before enabling real Stripe calls:
 
 ```text
-STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STUBB_SECRET_KEY_ENCRYPTION_KEY=<32 random bytes encoded as base64url>
 WHOLEGRAIN_LINK_SECRET=<same shared secret used by Wholegrain Studios>
 STUBB_RESTORE_SECRET=<optional separate HMAC secret for restore tokens>
 ```
