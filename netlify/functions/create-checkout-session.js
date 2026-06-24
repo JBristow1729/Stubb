@@ -1,6 +1,6 @@
 const { getDb } = require("./_lib/db");
 const { httpError, json, method, parseJson } = require("./_lib/http");
-const { decryptSecret } = require("./_lib/security");
+const { requireEnv } = require("./_lib/security");
 const { createCheckoutSession } = require("./_lib/stripe");
 
 exports.handler = async function handler(event) {
@@ -24,15 +24,17 @@ exports.handler = async function handler(event) {
         e.status,
         e.event_date,
         e.end_time,
-        c.encrypted_secret
+        a.stripe_account_id,
+        a.charges_enabled
       FROM events e
-      LEFT JOIN organiser_stripe_credentials c ON c.organiser_id = e.owner_id
+      LEFT JOIN organiser_stripe_accounts a ON a.organiser_id = e.owner_id
       WHERE e.id = ${body.eventId}
       LIMIT 1
     `;
     if (!eventRow) throw httpError(404, "Event not found.");
     if (eventRow.status !== "published") throw httpError(409, "Event is not open for checkout.");
-    if (!eventRow.encrypted_secret) throw httpError(409, "The organiser has not configured Stripe.");
+    if (!eventRow.stripe_account_id) throw httpError(409, "The organiser has not connected Stripe.");
+    if (!eventRow.charges_enabled) throw httpError(409, "The organiser's Stripe account is not ready for payments.");
 
     const [soldRow] = await db.sql`
       SELECT count(*)::int AS sold
@@ -52,7 +54,8 @@ exports.handler = async function handler(event) {
         buyer_name,
         buyer_email,
         amount_total_pence,
-        currency
+        currency,
+        stripe_account_id
       )
       VALUES (
         ${eventRow.id},
@@ -60,13 +63,14 @@ exports.handler = async function handler(event) {
         ${String(body.buyerName).trim()},
         ${String(body.buyerEmail).trim()},
         ${amountTotal},
-        ${eventRow.currency}
+        ${eventRow.currency},
+        ${eventRow.stripe_account_id}
       )
       RETURNING id
     `;
 
     const origin = event.headers.origin || process.env.URL || "http://localhost:8888";
-    const session = await createCheckoutSession(decryptSecret(eventRow.encrypted_secret), {
+    const session = await createCheckoutSession(requireEnv("STRIPE_PLATFORM_SECRET_KEY"), {
       mode: "payment",
       success_url: `${origin}/ticket-page.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/event-page.html?event=${encodeURIComponent(eventRow.id)}`,
@@ -78,6 +82,8 @@ exports.handler = async function handler(event) {
       "line_items[0][price_data][currency]": eventRow.currency,
       "line_items[0][price_data][unit_amount]": eventRow.ticket_price_pence,
       "line_items[0][price_data][product_data][name]": eventRow.title
+    }, {
+      stripeAccount: eventRow.stripe_account_id
     });
 
     await db.sql`

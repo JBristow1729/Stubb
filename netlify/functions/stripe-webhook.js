@@ -9,7 +9,7 @@ exports.handler = async function handler(event) {
     method(event, "POST");
     const payload = rawBody(event);
     const signature = event.headers["stripe-signature"] || event.headers["Stripe-Signature"];
-    if (!verifyStripeSignature(payload, signature, requireEnv("STRIPE_WEBHOOK_SECRET"))) {
+    if (!verifyStripeSignature(payload, signature, requireEnv("STRIPE_CONNECT_WEBHOOK_SECRET"))) {
       return json(400, { error: "Invalid Stripe signature." });
     }
 
@@ -26,7 +26,7 @@ exports.handler = async function handler(event) {
 
       if (stripeEvent.type === "checkout.session.completed") {
         const session = stripeEvent.data.object;
-        return issueTickets(client, session);
+        return issueTickets(client, session, stripeEvent.account);
       }
 
       if (stripeEvent.type === "checkout.session.expired") {
@@ -37,6 +37,15 @@ exports.handler = async function handler(event) {
           [stripeEvent.data.object.id]
         );
         return { received: true, action: "expire_order" };
+      }
+
+      if (stripeEvent.type === "account.application.deauthorized") {
+        await client.query(
+          `DELETE FROM organiser_stripe_accounts
+           WHERE stripe_account_id = $1`,
+          [stripeEvent.account]
+        );
+        return { received: true, action: "disconnect_account" };
       }
 
       if (stripeEvent.type === "payment_intent.payment_failed") {
@@ -58,18 +67,22 @@ exports.handler = async function handler(event) {
   }
 };
 
-async function issueTickets(client, session) {
+async function issueTickets(client, session, connectedAccountId) {
   const orderId = session.metadata?.orderId || session.client_reference_id;
   const orderResult = await client.query(
-    `SELECT *
-     FROM checkout_orders
-     WHERE id = $1
+    `SELECT o.*, e.owner_id
+     FROM checkout_orders o
+     JOIN events e ON e.id = o.event_id
+     WHERE o.id = $1
      FOR UPDATE`,
     [orderId]
   );
   const order = orderResult.rows[0];
   if (!order) return { received: true, action: "order_missing" };
   if (order.status === "paid") return { received: true, action: "already_paid" };
+  if (order.stripe_account_id && connectedAccountId && order.stripe_account_id !== connectedAccountId) {
+    return { received: true, action: "connected_account_mismatch" };
+  }
 
   await client.query(
     `UPDATE checkout_orders

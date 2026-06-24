@@ -4,11 +4,10 @@ This is the build order for taking Stubb from static design prototype to product
 
 ## 1. Server State
 
-Use Netlify Database as the system of record. The first migration is in
-`netlify/database/migrations/001_initial_production_schema.sql` and creates:
+Use Netlify Database as the system of record. The migrations in `netlify/database/migrations/` create:
 
 - `profiles` for Wholegrain-linked buyer and organiser accounts.
-- `organiser_stripe_credentials` for encrypted organiser Stripe keys.
+- `organiser_stripe_accounts` for Stripe Connect account IDs and onboarding status.
 - `events` for organiser-owned event listings.
 - `checkout_orders` for pending and paid Stripe orders.
 - `tickets` for issued tickets and check-in state.
@@ -26,25 +25,23 @@ Netlify's current Database docs say local development runs a real Postgres-compa
 `netlify dev`, and production code can use the `@netlify/database` module to query the correct database
 branch for the deploy context.
 
-## 2. Secrets
+## 2. Stripe Connect
 
-Never store Stripe keys in browser storage. Stubb stores organiser Stripe keys only through
-`/.netlify/functions/organiser-stripe-key`, encrypted with AES-256-GCM before writing to the database.
+Use Stripe Connect. Do not ask organisers to paste Stripe secret keys into Stubb.
 
-Required environment variable:
+Stubb is the Connect platform:
 
-```text
-STUBB_SECRET_KEY_ENCRYPTION_KEY=<32 random bytes encoded as base64 or base64url>
-```
+- organisers connect their own Stripe account through OAuth,
+- Stubb stores their `stripe_account_id`,
+- Checkout Sessions are created as direct charges on the connected account,
+- ticket money goes to the organiser's Stripe account,
+- Stubb uses one Connect webhook endpoint to verify payment events and issue tickets.
 
-Generate one locally with Node:
+Backend functions:
 
-```text
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-```
-
-Production still needs a real server-auth check before this endpoint is exposed in the UI. Right now the
-endpoint expects an organiser account context so the database shape and encryption path can be built first.
+- `/.netlify/functions/stripe-connect-start`
+- `/.netlify/functions/stripe-connect-callback`
+- `/.netlify/functions/stripe-connect-status`
 
 ## 3. Stripe Checkout
 
@@ -53,8 +50,7 @@ endpoint expects an organiser account context so the database shape and encrypti
 - validates the event from the database,
 - checks ticket availability,
 - creates a local `checkout_orders` row,
-- decrypts the organiser Stripe key server-side,
-- creates a Stripe Checkout Session without the Stripe SDK,
+- creates a connected-account Stripe Checkout Session without the Stripe SDK,
 - stores the Stripe session ID against the order.
 
 The browser should eventually call this function instead of issuing local tickets. Until the database is
@@ -65,21 +61,21 @@ enabled and events are written server-side, the current local-first UI remains u
 `/.netlify/functions/stripe-webhook` now:
 
 - uses the unmodified raw request body,
-- verifies `Stripe-Signature` with `STRIPE_WEBHOOK_SECRET`,
+- verifies `Stripe-Signature` with `STRIPE_CONNECT_WEBHOOK_SECRET`,
 - records processed Stripe event IDs to avoid duplicate ticket issue,
 - creates tickets only after `checkout.session.completed`.
 
 Required environment variable:
 
 ```text
-STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_CONNECT_WEBHOOK_SECRET=whsec_...
 ```
 
 ## 5. Authentication
 
 The Wholegrain account-link callback already exists, but production still needs a server-side session/token
-contract so browser requests cannot impersonate another organiser. Build this before connecting the account
-page to `organiser-stripe-key`.
+contract so browser requests cannot impersonate another organiser. Build this before exposing Connect
+actions in the account page.
 
 Recommended order:
 
@@ -121,12 +117,15 @@ Before the next production-code step, create/configure these externally:
 - Netlify project linked to this repo.
 - Netlify Database enabled for the project.
 - Netlify env vars:
-  - `STUBB_SECRET_KEY_ENCRYPTION_KEY`
-  - `STRIPE_WEBHOOK_SECRET`
+  - `STRIPE_PLATFORM_SECRET_KEY`
+  - `STRIPE_CONNECT_CLIENT_ID`
+  - `STRIPE_CONNECT_WEBHOOK_SECRET`
   - `WHOLEGRAIN_LINK_SECRET`
   - `STUBB_RESTORE_SECRET`
+  - `STUBB_CONNECT_STATE_SECRET`
 - Stripe webhook endpoint pointing at:
   - `https://<your-domain>/.netlify/functions/stripe-webhook`
-- A test organiser Stripe key to save through the encrypted endpoint.
+- Stripe Connect OAuth redirect pointing at:
+  - `https://<your-domain>/.netlify/functions/stripe-connect-callback`
 
 After that, the next code step is server-side profile/session auth, then event CRUD APIs.

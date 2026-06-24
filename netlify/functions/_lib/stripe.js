@@ -17,23 +17,62 @@ function verifyStripeSignature(payload, header, secret, toleranceSeconds = 300) 
   return timingSafeEqual(expected, parts.v1);
 }
 
-async function createCheckoutSession(secretKey, fields) {
+async function stripeFormRequest(path, secretKey, fields, options = {}) {
   const form = new URLSearchParams();
   Object.entries(fields).forEach(([key, value]) => {
     if (value !== undefined && value !== null) form.set(key, String(value));
   });
 
-  const response = await fetch(`${STRIPE_API}/checkout/sessions`, {
+  const headers = {
+    Authorization: `Bearer ${secretKey}`,
+    "Content-Type": "application/x-www-form-urlencoded"
+  };
+  if (options.basicAuth) {
+    headers.Authorization = `Basic ${Buffer.from(`${secretKey}:`).toString("base64")}`;
+  }
+  if (options.stripeAccount) headers["Stripe-Account"] = options.stripeAccount;
+
+  const response = await fetch(`${options.baseUrl || STRIPE_API}${path}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
+    headers,
     body: form
   });
   const body = await response.json();
-  if (!response.ok) throw httpError(response.status, body.error?.message || "Stripe checkout failed.");
+  if (!response.ok) throw httpError(response.status, body.error?.message || "Stripe request failed.");
   return body;
 }
 
-module.exports = { createCheckoutSession, verifyStripeSignature };
+async function stripeJsonRequest(path, secretKey, options = {}) {
+  const headers = { Authorization: `Bearer ${secretKey}` };
+  if (options.stripeAccount) headers["Stripe-Account"] = options.stripeAccount;
+
+  const response = await fetch(`${STRIPE_API}${path}`, { method: "GET", headers });
+  const body = await response.json();
+  if (!response.ok) throw httpError(response.status, body.error?.message || "Stripe request failed.");
+  return body;
+}
+
+function createCheckoutSession(secretKey, fields, options = {}) {
+  return stripeFormRequest("/checkout/sessions", secretKey, fields, options);
+}
+
+function exchangeOAuthCode(secretKey, code) {
+  return stripeFormRequest("/token", secretKey, {
+    grant_type: "authorization_code",
+    code
+  }, {
+    baseUrl: "https://connect.stripe.com/oauth",
+    basicAuth: true
+  });
+}
+
+function retrieveConnectedAccount(secretKey, accountId) {
+  return stripeJsonRequest(`/accounts/${encodeURIComponent(accountId)}`, secretKey);
+}
+
+module.exports = {
+  createCheckoutSession,
+  exchangeOAuthCode,
+  retrieveConnectedAccount,
+  verifyStripeSignature
+};
